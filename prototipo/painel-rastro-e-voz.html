@@ -477,6 +477,8 @@ const pad=n=>String(n).padStart(2,"0");
 const MES=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
 const fD=t=>{const d=new Date(t);return pad(d.getDate())+"/"+pad(d.getMonth()+1)+"/"+d.getFullYear()};
 const fDT=t=>{const d=new Date(t);return fD(t)+" "+pad(d.getHours())+":"+pad(d.getMinutes())};
+const parseDT=s=>{if(!s)return null;const t=new Date(String(s).replace(" ","T")).getTime();return isNaN(t)?null:t};
+const newReqId=()=>"web-"+Date.now().toString(16)+"-"+Math.random().toString(16).slice(2,10);
 const ago=t=>{const h=(TODAY-t)/HOUR;if(h<1)return "agora";if(h<24)return "há "+Math.round(h)+" h";const d=Math.round(h/24);return d===1?"há 1 dia":"há "+d+" dias"};
 const hrs=t=>(TODAY-t)/HOUR;
 const nf=n=>Number(n).toLocaleString("pt-BR");
@@ -488,6 +490,25 @@ const inR=(t,days,off)=>{off=off||0;return t!=null&&t>TODAY-(days+off)*DAY&&t<=T
 const PER=[[7,"7 dias"],[30,"30 dias"],[40,"40 dias"],[90,"90 dias"],[365,"12 meses"]];
 const perTxt=d=>({7:"nos últimos 7 dias",30:"nos últimos 30 dias",40:"nos últimos 40 dias",90:"nos últimos 90 dias",365:"nos últimos 12 meses"})[d];
 const cmpTxt=(a,b)=>{const d=a-b;return d>0?d+" a mais que no período anterior":d<0?(-d)+" a menos que no período anterior":"igual ao período anterior"};
+
+/* ================= API administrativa =================
+   Rotas conforme docs/HANDOFF-DEV.md e o contrato da API administrativa v1.0.
+   A API ainda não está liberada para este protótipo. Quando estiver:
+   1) trocar API_ENABLED para true;
+   2) ajustar API_BASE para a URL da API (ex.: "https://painel.rastroevoz.org").
+   Enquanto API_ENABLED for false, cada página usa os dados de exemplo. */
+const API_ENABLED=false;
+const API_BASE="";
+async function apiCall(path,opts){
+  if(!API_ENABLED)return {ok:false,data:null,offline:true};
+  try{
+    const r=await fetch(API_BASE+path,{credentials:"include",...opts,headers:{"Content-Type":"application/json",...(opts&&opts.headers)}});
+    const j=await r.json().catch(()=>null);
+    return {ok:r.ok&&!!(j&&j.success),data:j,offline:false};
+  }catch(e){return {ok:false,data:null,offline:true}}
+}
+const apiGet=path=>apiCall(path);
+const apiPost=(path,body)=>apiCall(path,{method:"POST",body:JSON.stringify(body)});
 
 /* ================= Dados de exemplo ================= */
 const PERFIS=["Produtor(a)","Artesã(o)","Instituição","Comprador(a)","Outros"];
@@ -563,6 +584,24 @@ const byName=n=>users.find(u=>u.nome===n);
 const compradores=users.filter(u=>u.perfil==="Comprador(a)");
 
 const PROD={"Carnaúba":[["Pó de carnaúba tipo B","kg"],["Palha de carnaúba","kg"],["Pó de carnaúba tipo A","kg"]],"Artesanato em palha":[["Bolsa de palha","un."],["Cesto de carnaúba","un."],["Chapéu de palha","un."],["Luminária de palha","un."]],"Cachaça artesanal":[["Cachaça artesanal 750 ml","un."]],"Mel silvestre":[["Mel silvestre","kg"]]};
+const UNIT_CATS=["massa","volume","contagem","comprimento"];
+const UNITS0=[{unit_key:"kg",label:"kg",category:"massa"},{unit_key:"un",label:"un.",category:"contagem"},{unit_key:"l",label:"litro",category:"volume"},{unit_key:"m",label:"metro",category:"comprimento"}];
+const SUGGESTIONS0=[
+  {id:1,suggestion_type:"product",parent_chain:"Carnaúba",suggested_value:"Cera de carnaúba refinada",status:"pending",occurrence_count:3,source_contexts:"new_registration"},
+  {id:2,suggestion_type:"chain",parent_chain:null,suggested_value:"Extrativismo do babaçu",status:"pending",occurrence_count:1,source_contexts:"new_registration"},
+  {id:3,suggestion_type:"product",parent_chain:"Mel silvestre",suggested_value:"Própolis bruta",status:"added",occurrence_count:5,source_contexts:"new_registration"},
+  {id:4,suggestion_type:"product",parent_chain:"Artesanato em palha",suggested_value:"Tapete de palha",status:"rejected",occurrence_count:1,source_contexts:"new_registration"}
+];
+const SUG_LABEL={product:"Produto",chain:"Cadeia"};
+const SUG_STATUS_LABEL={pending:"Pendente",added:"Adicionada",rejected:"Rejeitada"};
+const STEPS=["Identificação do produtor","Área de extração","Localização GPS","Foto da extração","Áudio de relato","Documento do comprador"];
+const CHAINS0=CADEIAS.map((c,i)=>({id:i+1,slug:norm(c).replace(/\s+/g,"-"),name:c,subtypes:[{id:i+1,slug:norm(c).replace(/\s+/g,"-"),name:c,form_config:{extra_fields:[],enabled_steps:STEPS.map((_,j)=>j+1).filter(n=>n!==6)}}]}));
+const CAMPAIGNS0=[
+  {id:1,code:"QR-PILOTO-2026",credits:5,max_redemptions:100,redeemed_count:37,status:"active",expires_at:"2026-12-31 23:59:00",reason:"Piloto de campo",redeem_url:"https://app.rastroevoz.com.br/qr/QR-PILOTO-2026"},
+  {id:2,code:"QR-FEIRA-JUNHO",credits:3,max_redemptions:50,redeemed_count:50,status:"disabled",expires_at:"2026-06-30 23:59:00",reason:"Feira de junho",redeem_url:"https://app.rastroevoz.com.br/qr/QR-FEIRA-JUNHO"}
+];
+const PARTNER_KEYS0=[{id:1,account_id:7,label:"Painel parceiro Brasil Ceras",key_prefix:"rv_9f3a",created_at:"2026-08-06 09:00:00",last_used_at:"2026-09-13 15:40:00",revoked_at:null,account_name:"Brasil Ceras (compras)"}];
+const OVERVIEW0={settlements:132,open_charges:4,open_charges_amount:1380.5};
 const DEST=["São Paulo","Fortaleza","Teresina","São Luís","Recife",null,null];
 let LOTES=[];
 users.forEach(u=>{
@@ -1382,17 +1421,276 @@ function Config({arg}){
   const A=useA();
   const G=[["Operação",[["catalogo","layers","Catálogo de produtos e cadeias","Produtos, unidades e cadeias disponíveis no cadastro"],["formularios","list","Formulários de cadastro","Etapas e campos extras por cadeia, sem precisar de deploy"],["creditos","ticket","Créditos e vouchers","Saldo de QR Codes e acessos patrocinados"]]],["Técnico",[["auditoria","scroll","Auditoria de ações","Quem fez o quê no painel, em linguagem legível"],["integracoes","key","Integrações e links de passagem","Chaves para sistemas parceiros e links temporários"]]],["Histórico",[["arquivo","archive","Arquivo do marketplace","Vendas e cobranças do fluxo retirado em 27/07/2026"]]]];
   const [fq,setFq]=useState("");const [tec,setTec]=useState({});
+  const [auditRows,setAuditRows]=useState(AUDIT);const [auditLoad,setAuditLoad]=useState(false);const [auditOffline,setAuditOffline]=useState(false);
+  const [sugs,setSugs]=useState(SUGGESTIONS0);const [sugStatus,setSugStatus]=useState("pending");
+  const [sugLoad,setSugLoad]=useState(false);const [sugOffline,setSugOffline]=useState(false);
+  const [units,setUnits]=useState(UNITS0);const [unitsOffline,setUnitsOffline]=useState(false);
+  const [rejeitar,setRejeitar]=useState(null);
+  const [novaUn,setNovaUn]=useState({label:"",category:UNIT_CATS[0]});
+  const [chains,setChains]=useState(CHAINS0);const [chainsOffline,setChainsOffline]=useState(false);
+  const [subtypeId,setSubtypeId]=useState(CHAINS0[0].subtypes[0].id);
+  const [steps,setSteps]=useState(new Set(CHAINS0[0].subtypes[0].form_config.enabled_steps));
+  const [formSaving,setFormSaving]=useState(false);
+  const [campaigns,setCampaigns]=useState(CAMPAIGNS0);const [campOffline,setCampOffline]=useState(false);
+  const [novaCamp,setNovaCamp]=useState({code:"",credits:5,max_redemptions:50,expires_at:"",reason:""});
+  const [alvo,setAlvo]=useState("");const [alvoUser,setAlvoUser]=useState(null);const [alvoLoad,setAlvoLoad]=useState(false);
+  const [concessao,setConcessao]=useState({credits:5,reason:""});
+  const [voucherId,setVoucherId]=useState("");
+  const [keys,setKeys]=useState(PARTNER_KEYS0);const [keysOffline,setKeysOffline]=useState(false);
+  const [novaChave,setNovaChave]=useState({account_id:"",label:""});
+  const [chaveGerada,setChaveGerada]=useState(null);
+  const [overview,setOverview]=useState(OVERVIEW0);const [overviewOffline,setOverviewOffline]=useState(false);
+  useEffect(()=>{
+    if(arg!=="auditoria")return;
+    let alive=true;setAuditLoad(true);
+    apiGet("/api/mvp_admin.php?action=audit_log&page=1&limit=50").then(res=>{
+      if(!alive)return;setAuditLoad(false);
+      if(res.ok&&res.data&&res.data.entries){
+        setAuditRows(res.data.entries.map(e=>({t:parseDT(e.created_at),quem:(e.admin_jti||"admin").slice(0,8),acao:e.action,alvo:e.target_type+" #"+e.target_id,tec:JSON.stringify({details:e.details,ip_address:e.ip_address,admin_jti:e.admin_jti})})));
+        setAuditOffline(false);
+      }else{setAuditRows(AUDIT);setAuditOffline(true)}
+    });
+    return ()=>{alive=false};
+  },[arg]);
+  useEffect(()=>{
+    if(arg!=="catalogo")return;
+    let alive=true;setSugLoad(true);
+    apiGet("/api/admin_catalog_suggestions.php?action=list&status="+sugStatus).then(res=>{
+      if(!alive)return;setSugLoad(false);
+      if(res.ok&&res.data&&res.data.suggestions){setSugs(res.data.suggestions);setSugOffline(false)}
+      else{setSugs(SUGGESTIONS0.filter(s=>sugStatus==="all"||s.status===sugStatus));setSugOffline(true)}
+    });
+    apiGet("/api/measurement_units.php").then(res=>{
+      if(!alive)return;
+      if(res.ok&&res.data&&res.data.units){setUnits(res.data.units);setUnitsOffline(false)}
+      else{setUnits(UNITS0);setUnitsOffline(true)}
+    });
+    return ()=>{alive=false};
+  },[arg,sugStatus]);
+  useEffect(()=>{
+    if(arg!=="formularios")return;
+    let alive=true;
+    apiGet("/api/admin_chain_subtypes.php?action=list").then(res=>{
+      if(!alive)return;
+      const cs=res.ok&&res.data&&res.data.chains;
+      if(cs&&cs.length){
+        setChains(cs);setChainsOffline(false);
+        const first=cs[0].subtypes[0];
+        setSubtypeId(first.id);setSteps(new Set(first.form_config.enabled_steps||[]));
+      }else{setChains(CHAINS0);setChainsOffline(true)}
+    });
+    return ()=>{alive=false};
+  },[arg]);
+  useEffect(()=>{
+    if(arg!=="creditos")return;
+    let alive=true;
+    apiGet("/api/qr_credit_promotions.php?action=admin_list").then(res=>{
+      if(!alive)return;
+      if(res.ok&&res.data&&res.data.campaigns){setCampaigns(res.data.campaigns);setCampOffline(false)}
+      else{setCampaigns(CAMPAIGNS0);setCampOffline(true)}
+    });
+    return ()=>{alive=false};
+  },[arg]);
+  useEffect(()=>{
+    if(arg!=="integracoes")return;
+    let alive=true;
+    apiGet("/api/admin_partner_keys.php?action=list").then(res=>{
+      if(!alive)return;
+      if(res.ok&&res.data&&res.data.keys){setKeys(res.data.keys);setKeysOffline(false)}
+      else{setKeys(PARTNER_KEYS0);setKeysOffline(true)}
+    });
+    return ()=>{alive=false};
+  },[arg]);
+  useEffect(()=>{
+    if(arg!=="arquivo")return;
+    let alive=true;
+    apiGet("/api/mvp_admin.php?action=overview").then(res=>{
+      if(!alive)return;
+      if(res.ok&&res.data&&res.data.overview){setOverview(res.data.overview);setOverviewOffline(false)}
+      else{setOverview(OVERVIEW0);setOverviewOffline(true)}
+    });
+    return ()=>{alive=false};
+  },[arg]);
+  const revisar=(sug,decision,note)=>{
+    apiPost("/api/admin_catalog_suggestions.php?action=review",{suggestion_id:sug.id,decision,resolution_note:note||undefined}).then(()=>{
+      setSugs(prev=>prev.map(s=>s.id===sug.id?{...s,status:decision==="add"?"added":"rejected"}:s).filter(s=>sugStatus==="all"||s.status===sugStatus));
+      A.toast(decision==="add"?"Sugestão adicionada ao catálogo":"Sugestão marcada como não incluída");
+    });
+    setRejeitar(null);
+  };
+  const cadastrarUnidade=()=>{
+    if(!novaUn.label.trim())return;
+    apiPost("/api/measurement_units.php",{label:novaUn.label.trim(),category:novaUn.category}).then(res=>{
+      const unit=(res.ok&&res.data&&res.data.unit)||{unit_key:norm(novaUn.label).replace(/\s+/g,"_"),label:novaUn.label.trim(),category:novaUn.category};
+      setUnits(prev=>[...prev,unit]);
+      setNovaUn({label:"",category:UNIT_CATS[0]});
+      A.toast((res.ok&&res.data&&res.data.message)||"Unidade cadastrada com sucesso.");
+    });
+  };
+  const toggleStep=n=>setSteps(prev=>{const s=new Set(prev);s.has(n)?s.delete(n):s.add(n);return s});
+  const salvarFormulario=()=>{
+    setFormSaving(true);
+    const subtype=chains.flatMap(c=>c.subtypes).find(s=>s.id===subtypeId);
+    const extra_fields=(subtype&&subtype.form_config&&subtype.form_config.extra_fields)||[];
+    apiPost("/api/admin_chain_subtypes.php?action=update_form_config",{subtype_id:subtypeId,extra_fields,enabled_steps:[...steps].sort((a,b)=>a-b)}).then(()=>{
+      setFormSaving(false);
+      A.toast("As mudanças valem para os próximos cadastros.");
+    });
+  };
+  const buscarAlvo=()=>{
+    if(!alvo.trim())return;
+    setAlvoLoad(true);setAlvoUser(null);
+    apiGet("/api/qr_credit_promotions.php?action=admin_lookup_user&target="+encodeURIComponent(alvo.trim())).then(res=>{
+      setAlvoLoad(false);
+      if(res.ok&&res.data&&res.data.user)setAlvoUser(res.data.user);
+      else A.toast("Usuário não encontrado ou API ainda não conectada.");
+    });
+  };
+  const concederCreditos=()=>{
+    if(!alvoUser||!concessao.reason.trim())return;
+    apiPost("/api/qr_credit_promotions.php?action=admin_grant_direct",{target:alvo.trim(),credits:concessao.credits,reason:concessao.reason.trim(),request_id:newReqId()}).then(res=>{
+      const saldo=res.ok&&res.data&&res.data.grant&&res.data.grant.qr_balance!=null?res.data.grant.qr_balance:(alvoUser.qr_balance||0)+concessao.credits;
+      setAlvoUser({...alvoUser,qr_balance:saldo});
+      setConcessao({credits:5,reason:""});
+      A.toast((res.ok&&res.data&&res.data.message)||"Créditos concedidos com sucesso.");
+    });
+  };
+  const criarCampanha=()=>{
+    if(!novaCamp.credits||!novaCamp.max_redemptions)return;
+    apiPost("/api/qr_credit_promotions.php?action=admin_create_campaign",novaCamp).then(res=>{
+      const camp=(res.ok&&res.data&&res.data.campaign)||{id:Date.now(),code:novaCamp.code||"QR-"+Date.now(),credits:novaCamp.credits,max_redemptions:novaCamp.max_redemptions,redeemed_count:0,status:"active",expires_at:novaCamp.expires_at,reason:novaCamp.reason};
+      setCampaigns(prev=>[...prev,camp]);
+      setNovaCamp({code:"",credits:5,max_redemptions:50,expires_at:"",reason:""});
+      A.toast("Campanha criada.");
+    });
+  };
+  const alternarCampanha=camp=>{
+    const status=camp.status==="active"?"disabled":"active";
+    apiPost("/api/qr_credit_promotions.php?action=admin_campaign_status",{campaign_id:camp.id,status}).then(()=>{
+      setCampaigns(prev=>prev.map(c=>c.id===camp.id?{...c,status}:c));
+      A.toast(status==="active"?"Campanha ativada.":"Campanha desativada.");
+    });
+  };
+  const enviarVoucher=()=>{
+    if(!voucherId.trim())return;
+    apiPost("/api/mvp_admin.php?action=email_voucher",{voucher_id:voucherId.trim()}).then(res=>{
+      A.toast((res.ok&&res.data&&res.data.message)||"Voucher enviado por email.");
+      setVoucherId("");
+    });
+  };
+  const criarChave=()=>{
+    if(!novaChave.account_id||!novaChave.label.trim())return;
+    apiPost("/api/admin_partner_keys.php?action=create",{account_id:+novaChave.account_id,label:novaChave.label.trim()}).then(res=>{
+      if(res.ok&&res.data&&res.data.plaintext_key){
+        setChaveGerada(res.data);
+        setKeys(prev=>[...prev,{id:Date.now(),account_id:+novaChave.account_id,label:novaChave.label.trim(),key_prefix:res.data.key_prefix,created_at:new Date().toISOString(),last_used_at:null,revoked_at:null,account_name:""}]);
+      }else{
+        setChaveGerada({message:"API ainda não conectada — mostrando uma chave de exemplo.",plaintext_key:"rv_exemplo_"+Math.random().toString(16).slice(2,10),key_prefix:"rv_"+Math.random().toString(16).slice(2,6)});
+      }
+      setNovaChave({account_id:"",label:""});
+    });
+  };
+  const revogarChave=key=>{
+    apiPost("/api/admin_partner_keys.php?action=revoke",{id:key.id}).then(()=>{
+      setKeys(prev=>prev.map(k=>k.id===key.id?{...k,revoked_at:new Date().toISOString()}:k));
+      A.toast("Chave revogada.");
+    });
+  };
   if(!arg)return html`<div><${Head} title="Configurações" sub="Funções que continuam disponíveis, fora da rotina diária."/>${G.map(([g,items])=>html`<div key=${g} style=${{marginTop:22}}><h2 style=${{marginBottom:10}}>${g}</h2><div className="grid" style=${{gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))"}}>${items.map(([k,ic,t,dsc])=>html`<button type="button" key=${k} className="card row" style=${{padding:16,textAlign:"left",alignItems:"flex-start"}} onClick=${()=>A.go("config",k)}><span className="ico t-g"><${Icon} n=${ic} s=${17}/></span><span style=${{flex:1}}><b>${t}</b><span className="sm muted" style=${{display:"block"}}>${dsc}</span></span><${Icon} n="chr" s=${16}/></button>`)}</div></div>`)}</div>`;
   const title=G.flatMap(g=>g[1]).find(x=>x[0]===arg)[2];
   const back=html`<button type="button" className="btn ghost sm" onClick=${()=>A.go("config")}><${Icon} n="chl" s=${14}/>Configurações</button>`;
   let body;
-  if(arg==="auditoria"){const rows=AUDIT.filter(a=>!fq||a.quem===fq);body=html`<div className="card tscroll" style=${{marginTop:14}}><div className="row" style=${{padding:12,borderBottom:"1px solid var(--line)"}}><select className="inp" aria-label="Filtrar por pessoa" value=${fq} onChange=${e=>setFq(e.target.value)}><option value="">Todas as pessoas</option>${[...TEAM,"Sistema"].map(p=>html`<option key=${p}>${p}</option>`)}</select></div><table><thead><tr><th>Quando</th><th>O que aconteceu</th><th></th></tr></thead><tbody>${rows.map((a,i)=>html`<${React.Fragment} key=${i}><tr><td style=${{whiteSpace:"nowrap"}}>${fDT(a.t)}</td><td><b>${a.quem}</b> ${a.acao.toLowerCase()}: ${a.alvo}</td><td style=${{textAlign:"right"}}><${Btn} sz="sm" k="ghost" aria-expanded=${!!tec[i]} onClick=${()=>setTec({...tec,[i]:!tec[i]})}>${tec[i]?"Ocultar dados técnicos":"Ver dados técnicos"}<//></td></tr>${tec[i]?html`<tr><td></td><td colSpan="2"><code className="sm">${a.tec}</code></td></tr>`:null}<//>`)}</tbody></table></div>`}
-  else if(arg==="creditos"){body=html`<div className="card tscroll" style=${{marginTop:14}}><table><thead><tr><th>Conta</th><th>Tipo</th><th>Uso de QR Codes</th><th></th></tr></thead><tbody>${users.filter(u=>u.ativ&&u.perfil!=="Comprador(a)").slice(0,10).map(u=>{const used=Math.min(25,LOTES.filter(l=>l.owner===u.id&&l.qr).length);return html`<tr key=${u.id}><td className="b">${u.nome}</td><td>${u.nome.startsWith("Jayne")?"Acesso patrocinado":"Saldo de QR Codes"}</td><td style=${{minWidth:180}}><div className="sm">${used} de 25 usados</div><div className="bar"><i style=${{width:used/25*100+"%"}}></i></div></td><td style=${{textAlign:"right",whiteSpace:"nowrap"}}><${Btn} sz="sm" k="ghost" onClick=${()=>A.toast("Voucher pronto para impressão")}>Imprimir<//> <${Btn} sz="sm" onClick=${()=>A.toast("Voucher enviado por e-mail")}>Enviar<//></td></tr>`})}</tbody></table></div>`}
-  else if(arg==="catalogo"){body=html`<div className="grid g2" style=${{marginTop:14}}>${Object.entries(PROD).map(([c,ps])=>html`<div key=${c} className="card pad"><div className="row between"><h3>${c}</h3><${Btn} sz="sm" icon="plus" onClick=${()=>A.toast("Novo produto em "+c)}>Produto<//></div>${ps.map(p=>html`<div key=${p[0]} className="row between sm" style=${{padding:"6px 0",borderBottom:"1px solid var(--line2)"}}><span>${p[0]}</span><span className="muted">${p[1]}</span></div>`)}</div>`)}</div>`}
-  else if(arg==="formularios"){body=html`<div className="card pad" style=${{marginTop:14}}><label className="row wrap"><span className="b">Cadeia</span><select className="inp" defaultValue="Carnaúba">${CADEIAS.map(c=>html`<option key=${c}>${c}</option>`)}</select></label><div style=${{marginTop:12}}>${["Identificação do produtor","Área de extração","Localização GPS","Foto da extração","Áudio de relato","Documento do comprador"].map((s,i)=>html`<label key=${s} className="row between" style=${{padding:"9px 0",borderBottom:"1px solid var(--line2)"}}><span>${s}</span><input type="checkbox" defaultChecked=${i!==5}/></label>`)}</div><p className="sm muted">As mudanças valem para os próximos cadastros.</p></div>`}
-  else if(arg==="integracoes"){body=html`<div className="card" style=${{marginTop:14}}><${Empty} title="Nenhuma chave de integração criada" text="Crie uma chave quando um sistema parceiro precisar receber lotes automaticamente. A chave aparece uma única vez." action=${html`<div className="row" style=${{justifyContent:"center"}}><${Btn} k="pri" icon="key" onClick=${()=>A.toast("Chave de integração criada")}>Criar chave<//><${Btn} onClick=${()=>A.toast("Link de passagem criado")}>Criar link de passagem<//></div>`}/></div>`}
-  else {body=html`<div className="grid g2" style=${{marginTop:14}}><${Kpi} label="Vendas do fluxo antigo" value="0"/><${Kpi} label="Cobranças do fluxo antigo" value="R$ 0,00"/><div className="card pad" style=${{gridColumn:"1 / -1"}}><p className="muted" style=${{margin:0}}>Somente leitura. Estes dados não fazem parte da operação atual e ficam guardados para consulta.</p></div></div>`}
-  return html`<div>${back}<h1 style=${{marginTop:8}}>${title}</h1>${body}</div>`;
+  if(arg==="auditoria"){
+    const rows=auditRows.filter(a=>!fq||a.quem===fq);
+    const quemOpts=auditOffline?[...TEAM,"Sistema"]:[...new Set(auditRows.map(a=>a.quem))];
+    body=html`<div className="card tscroll" style=${{marginTop:14}}>
+      <div className="row" style=${{padding:12,borderBottom:"1px solid var(--line)"}}><select className="inp" aria-label="Filtrar por pessoa" value=${fq} onChange=${e=>setFq(e.target.value)}><option value="">Todas as pessoas</option>${quemOpts.map(p=>html`<option key=${p}>${p}</option>`)}</select></div>
+      ${auditOffline?html`<p className="sm muted" style=${{padding:"0 12px 12px"}}>API ainda não conectada (<code>mvp_admin.php?action=audit_log</code>). Mostrando dados de exemplo.</p>`:null}
+      ${auditLoad?html`<div className="sk" style=${{height:80,margin:12}}></div>`:html`<table><thead><tr><th>Quando</th><th>O que aconteceu</th><th></th></tr></thead><tbody>${rows.map((a,i)=>html`<${React.Fragment} key=${i}><tr><td style=${{whiteSpace:"nowrap"}}>${a.t?fDT(a.t):"—"}</td><td><b>${a.quem}</b> ${a.acao.toLowerCase()}: ${a.alvo}</td><td style=${{textAlign:"right"}}><${Btn} sz="sm" k="ghost" aria-expanded=${!!tec[i]} onClick=${()=>setTec({...tec,[i]:!tec[i]})}>${tec[i]?"Ocultar dados técnicos":"Ver dados técnicos"}<//></td></tr>${tec[i]?html`<tr><td></td><td colSpan="2"><code className="sm">${a.tec}</code></td></tr>`:null}<//>`)}</tbody></table>`}
+    </div>`;
+  }
+  else if(arg==="creditos"){body=html`<div style=${{marginTop:14,display:"flex",flexDirection:"column",gap:22}}>
+    <div className="card pad">
+      <h3 style=${{margin:"0 0 10px"}}>Conceder créditos</h3>
+      <label className="row wrap" style=${{gap:10}}><span className="b">E-mail ou Código Rastro</span><input className="inp" style=${{maxWidth:240}} placeholder="pessoa@exemplo.com" value=${alvo} onInput=${e=>setAlvo(e.target.value)}/><${Btn} sz="sm" k="ghost" disabled=${alvoLoad||!alvo.trim()} onClick=${buscarAlvo}>Buscar<//></label>
+      ${alvoUser?html`<div className="row between" style=${{marginTop:10,padding:"10px 0",borderTop:"1px solid var(--line2)"}}><span><b>${alvoUser.name}</b><span className="muted"> · ${alvoUser.email}</span></span><span className="pill t-n">Saldo: ${alvoUser.qr_balance}</span></div><label className="row wrap" style=${{gap:10,marginTop:10}}><span className="b">Créditos</span><input className="inp" type="number" min="1" max="500" style=${{maxWidth:100}} value=${concessao.credits} onInput=${e=>setConcessao({...concessao,credits:+e.target.value})}/><span className="b">Motivo</span><input className="inp" style=${{maxWidth:260}} value=${concessao.reason} onInput=${e=>setConcessao({...concessao,reason:e.target.value})}/><${Btn} sz="sm" k="pri" disabled=${!concessao.reason.trim()} onClick=${concederCreditos}>Conceder<//></label>`:null}
+    </div>
+    <div className="card pad">
+      <h3 style=${{margin:"0 0 10px"}}>Campanhas de créditos</h3>
+      ${campOffline?html`<p className="sm muted">API ainda não conectada (<code>qr_credit_promotions.php</code>). Mostrando dados de exemplo.</p>`:null}
+      <div className="tscroll"><table><thead><tr><th>Código</th><th>Créditos</th><th>Resgates</th><th>Validade</th><th></th></tr></thead><tbody>${campaigns.map(c=>html`<tr key=${c.id}><td className="b">${c.code}</td><td>${c.credits}</td><td>${c.redeemed_count} de ${c.max_redemptions}</td><td>${c.expires_at?fD(parseDT(c.expires_at)):"—"}</td><td style=${{textAlign:"right"}}><${Btn} sz="sm" k="ghost" onClick=${()=>alternarCampanha(c)}>${c.status==="active"?"Desativar":"Ativar"}<//></td></tr>`)}</tbody></table></div>
+      <label className="row wrap" style=${{gap:10,marginTop:12}}><span className="b">Nova campanha</span><input className="inp" style=${{maxWidth:150}} placeholder="código (opcional)" value=${novaCamp.code} onInput=${e=>setNovaCamp({...novaCamp,code:e.target.value})}/><input className="inp" type="number" style=${{maxWidth:90}} placeholder="créditos" value=${novaCamp.credits} onInput=${e=>setNovaCamp({...novaCamp,credits:+e.target.value})}/><input className="inp" type="number" style=${{maxWidth:100}} placeholder="limite" value=${novaCamp.max_redemptions} onInput=${e=>setNovaCamp({...novaCamp,max_redemptions:+e.target.value})}/><input className="inp" placeholder="motivo" style=${{maxWidth:180}} value=${novaCamp.reason} onInput=${e=>setNovaCamp({...novaCamp,reason:e.target.value})}/><${Btn} sz="sm" icon="plus" onClick=${criarCampanha}>Criar<//></label>
+    </div>
+    <div className="card pad">
+      <h3 style=${{margin:"0 0 10px"}}>Enviar voucher por e-mail</h3>
+      <label className="row wrap" style=${{gap:10}}><span className="b">ID do voucher</span><input className="inp" style=${{maxWidth:140}} value=${voucherId} onInput=${e=>setVoucherId(e.target.value)}/><${Btn} sz="sm" onClick=${enviarVoucher} disabled=${!voucherId.trim()}>Enviar<//></label>
+    </div>
+  </div>`}
+  else if(arg==="catalogo"){body=html`<div style=${{marginTop:14,display:"flex",flexDirection:"column",gap:22}}>
+    <div className="card pad">
+      <div className="row between wrap" style=${{gap:10}}><h3 style=${{margin:0}}>Sugestões do catálogo</h3><label className="row" style=${{gap:6}}><span className="sm muted b">Status</span><select className="inp" value=${sugStatus} onChange=${e=>setSugStatus(e.target.value)}><option value="pending">Pendentes</option><option value="added">Adicionadas</option><option value="rejected">Rejeitadas</option><option value="all">Todas</option></select></label></div>
+      ${sugOffline?html`<p className="sm muted" style=${{marginTop:8}}>API ainda não conectada (<code>admin_catalog_suggestions.php</code>). Mostrando dados de exemplo.</p>`:null}
+      ${sugLoad?html`<div className="sk" style=${{height:80,marginTop:12}}></div>`:sugs.length?html`<div className="tscroll" style=${{marginTop:12}}><table><thead><tr><th>Tipo</th><th>Cadeia</th><th>Sugestão</th><th>Ocorrências</th><th></th></tr></thead><tbody>${sugs.map(s=>html`<tr key=${s.id}><td>${SUG_LABEL[s.suggestion_type]||s.suggestion_type}</td><td>${s.parent_chain||"—"}</td><td className="b">${s.suggested_value}</td><td>${s.occurrence_count}</td><td style=${{textAlign:"right",whiteSpace:"nowrap"}}>${s.status==="pending"?html`<${Btn} sz="sm" k="pri" onClick=${()=>revisar(s,"add")}>Adicionar<//> <${Btn} sz="sm" k="ghost" onClick=${()=>setRejeitar(s)}>Rejeitar<//>`:html`<${Pill} t=${s.status==="added"?"g":"n"}>${SUG_STATUS_LABEL[s.status]||s.status}<//>`}</td></tr>`)}</tbody></table></div>`:html`<${Empty} title="Nenhuma sugestão aqui" text="Sugestões de cadeia ou produto enviadas pelos usuários no cadastro aparecem nesta lista."/>`}
+    </div>
+    <div>
+      <h3 style=${{marginBottom:10}}>Produtos por cadeia</h3>
+      <p className="sm muted" style=${{marginTop:-4,marginBottom:10}}>Novos itens entram por aprovação de sugestões, na seção acima.</p>
+      <div className="grid g2">${Object.entries(PROD).map(([c,ps])=>html`<div key=${c} className="card pad"><h3 style=${{margin:"0 0 8px"}}>${c}</h3>${ps.map(p=>html`<div key=${p[0]} className="row between sm" style=${{padding:"6px 0",borderBottom:"1px solid var(--line2)"}}><span>${p[0]}</span><span className="muted">${p[1]}</span></div>`)}</div>`)}</div>
+    </div>
+    <div className="card pad">
+      <h3 style=${{margin:"0 0 10px"}}>Unidades de medida</h3>
+      ${unitsOffline?html`<p className="sm muted">API ainda não conectada (<code>measurement_units.php</code>). Mostrando dados de exemplo.</p>`:null}
+      <div className="row wrap" style=${{gap:6,marginBottom:14}}>${units.map(u=>html`<span key=${u.unit_key} className="pill t-n">${u.label}<span className="muted" style=${{marginLeft:4}}>${u.category}</span></span>`)}</div>
+      <label className="row wrap" style=${{gap:10}}><span className="b">Nova unidade</span><input className="inp" style=${{maxWidth:160}} placeholder="ex.: feixe" value=${novaUn.label} onInput=${e=>setNovaUn({...novaUn,label:e.target.value})}/><select className="inp" style=${{maxWidth:160}} value=${novaUn.category} onChange=${e=>setNovaUn({...novaUn,category:e.target.value})}>${UNIT_CATS.map(c=>html`<option key=${c} value=${c}>${c}</option>`)}</select><${Btn} sz="sm" icon="plus" disabled=${!novaUn.label.trim()} onClick=${cadastrarUnidade}>Cadastrar<//></label>
+    </div>
+  </div>`}
+  else if(arg==="formularios"){
+    const flat=chains.flatMap(c=>c.subtypes.map(s=>({...s,chainName:c.name})));
+    body=html`<div className="card pad" style=${{marginTop:14}}>
+      ${chainsOffline?html`<p className="sm muted">API ainda não conectada (<code>admin_chain_subtypes.php</code>). Mostrando dados de exemplo.</p>`:null}
+      <label className="row wrap"><span className="b">Cadeia</span><select className="inp" value=${subtypeId} onChange=${e=>{const id=+e.target.value;setSubtypeId(id);const s=flat.find(x=>x.id===id);setSteps(new Set((s&&s.form_config&&s.form_config.enabled_steps)||[]))}}>${flat.map(s=>html`<option key=${s.id} value=${s.id}>${s.name}</option>`)}</select></label>
+      <div style=${{marginTop:12}}>${STEPS.map((s,i)=>html`<label key=${s} className="row between" style=${{padding:"9px 0",borderBottom:"1px solid var(--line2)"}}><span>${s}</span><input type="checkbox" checked=${steps.has(i+1)} onChange=${()=>toggleStep(i+1)}/></label>`)}</div>
+      <div className="row between wrap" style=${{marginTop:12,gap:10}}><p className="sm muted" style=${{margin:0}}>As mudanças valem para os próximos cadastros.</p><${Btn} sz="sm" k="pri" disabled=${formSaving} onClick=${salvarFormulario}>Salvar<//></div>
+    </div>`;
+  }
+  else if(arg==="integracoes"){body=html`<div style=${{marginTop:14,display:"flex",flexDirection:"column",gap:22}}>
+    <div className="card pad">
+      <h3 style=${{margin:"0 0 10px"}}>Chaves de integração</h3>
+      ${keysOffline?html`<p className="sm muted">API ainda não conectada (<code>admin_partner_keys.php</code>). Mostrando dados de exemplo.</p>`:null}
+      ${keys.length?html`<div className="tscroll" style=${{marginTop:10}}><table><thead><tr><th>Rótulo</th><th>Conta</th><th>Prefixo</th><th>Último uso</th><th></th></tr></thead><tbody>${keys.map(k=>html`<tr key=${k.id}><td className="b">${k.label}</td><td>${k.account_name||("Conta #"+k.account_id)}</td><td><code className="sm">${k.key_prefix}…</code></td><td>${k.last_used_at?ago(parseDT(k.last_used_at)):"nunca usada"}</td><td style=${{textAlign:"right"}}>${k.revoked_at?html`<${Pill} t="r">Revogada<//>`:html`<${Btn} sz="sm" k="ghost" onClick=${()=>revogarChave(k)}>Revogar<//>`}</td></tr>`)}</tbody></table></div>`:html`<${Empty} title="Nenhuma chave de integração criada" text="Crie uma chave quando um sistema parceiro precisar receber lotes automaticamente. A chave aparece uma única vez."/>`}
+      <label className="row wrap" style=${{gap:10,marginTop:14}}><span className="b">Conta (ID)</span><input className="inp" type="number" style=${{maxWidth:100}} value=${novaChave.account_id} onInput=${e=>setNovaChave({...novaChave,account_id:e.target.value})}/><span className="b">Rótulo</span><input className="inp" style=${{maxWidth:220}} placeholder="ex.: Painel parceiro" value=${novaChave.label} onInput=${e=>setNovaChave({...novaChave,label:e.target.value})}/><${Btn} sz="sm" k="pri" icon="key" disabled=${!novaChave.account_id||!novaChave.label.trim()} onClick=${criarChave}>Criar chave<//></label>
+    </div>
+    <div className="card pad">
+      <h3 style=${{margin:"0 0 6px"}}>Links de passagem</h3>
+      <p className="sm muted" style=${{marginTop:0}}>Ainda sem rota própria no contrato da API — este botão fica local até a rota ser definida.</p>
+      <${Btn} onClick=${()=>A.toast("Link de passagem criado")}>Criar link de passagem<//>
+    </div>
+  </div>`}
+  else {body=html`<div className="grid g2" style=${{marginTop:14}}>
+    ${overviewOffline?html`<p className="sm muted" style=${{gridColumn:"1 / -1"}}>API ainda não conectada (<code>mvp_admin.php?action=overview</code>). Mostrando dados de exemplo.</p>`:null}
+    <${Kpi} label="Vendas do fluxo antigo" value=${nf(overview.settlements||0)}/>
+    <${Kpi} label="Cobranças do fluxo antigo" value=${"R$ "+nf1(overview.open_charges_amount||0)} sub=${(overview.open_charges||0)+" em aberto"}/>
+    <div className="card pad" style=${{gridColumn:"1 / -1"}}><p className="muted" style=${{margin:0}}>Somente leitura. Estes dados não fazem parte da operação atual e ficam guardados para consulta.</p></div>
+  </div>`}
+  return html`<div>${back}<h1 style=${{marginTop:8}}>${title}</h1>${body}${rejeitar?html`<${RejeitarSugestaoModal} sug=${rejeitar} onClose=${()=>setRejeitar(null)} onDone=${note=>revisar(rejeitar,"reject",note)}/>`:null}${chaveGerada?html`<${ChaveGeradaModal} data=${chaveGerada} onClose=${()=>setChaveGerada(null)}/>`:null}</div>`;
+}
+function ChaveGeradaModal({data,onClose}){
+  return html`<${Modal} label="Chave gerada" onClose=${onClose}>
+    <h2>Chave gerada</h2>
+    <p className="sm muted">${data.message||"Copie agora — não é possível recuperar depois."}</p>
+    <div className="row between" style=${{gap:8,padding:"10px 12px",background:"var(--card2)",borderRadius:8,marginTop:10}}><code style=${{wordBreak:"break-all"}}>${data.plaintext_key}</code><button type="button" className="btn ghost sm" onClick=${()=>{navigator.clipboard&&navigator.clipboard.writeText(data.plaintext_key)}}>Copiar</button></div>
+    <div className="row" style=${{justifyContent:"flex-end",marginTop:14}}><${Btn} k="pri" onClick=${onClose}>Entendi, já copiei<//></div>
+  <//>`;
+}
+function RejeitarSugestaoModal({sug,onClose,onDone}){
+  const [nota,setNota]=useState("");
+  return html`<${Modal} label="Rejeitar sugestão" onClose=${onClose}>
+    <h2>Rejeitar "${sug.suggested_value}"</h2>
+    <p className="sm muted">A sugestão fica marcada como rejeitada e não entra no catálogo.</p>
+    <label className="b" htmlFor="nota-rejeicao">Nota (opcional)</label>
+    <textarea id="nota-rejeicao" className="inp" rows="3" style=${{marginTop:6}} placeholder="ex.: Duplicada de item já existente." value=${nota} onInput=${e=>setNota(e.target.value)}></textarea>
+    <div className="row" style=${{justifyContent:"flex-end",marginTop:14}}><${Btn} k="ghost" onClick=${onClose}>Cancelar<//><${Btn} k="pri" onClick=${()=>onDone(nota.trim())}>Rejeitar sugestão<//></div>
+  <//>`;
 }
 
 /* ================= Paleta, notificações e shell ================= */

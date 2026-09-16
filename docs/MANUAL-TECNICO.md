@@ -90,12 +90,13 @@ Não tem React Router. É tudo feito à mão via **hash da URL**, dentro de `App
 
 ## 6. Tela de Configurações (`#config`) em detalhe
 
-Fica toda na `function Config({arg})`, linha 1381.
+Fica toda na `function Config({arg})`, linha 1420.
 
-- Linha 1383: array `G` — define os grupos do menu ("Operação", "Técnico", "Histórico") e as 6 subpáginas: `catalogo`, `formularios`, `creditos`, `auditoria`, `integracoes`, `arquivo`. É esse array que gera os cartões da tela `#config` sem argumento.
-- Linhas 1389–1394: uma cadeia de `if/else if` — uma por subpágina — que decide o conteúdo (`body`) a partir de `arg`.
-- **Para adicionar uma 7ª subpágina:** acrescentar a entrada em `G` e um novo `else if(arg==="chave"){...}` nessa cadeia. Se precisar de dado fictício novo, ele entra na seção "Dados de exemplo" (linha 492).
-- As rotas de API sugeridas para cada uma dessas 6 subpáginas já estão documentadas em `HANDOFF-DEV.md`, seção "7. Endpoints sugeridos".
+- Array `G` (logo no início da função) — define os grupos do menu ("Operação", "Técnico", "Histórico") e as 6 subpáginas: `catalogo`, `formularios`, `creditos`, `auditoria`, `integracoes`, `arquivo`. É esse array que gera os cartões da tela `#config` sem argumento.
+- Uma cadeia de `if/else if` — uma por subpágina — decide o conteúdo (`body`) a partir de `arg`.
+- **As 6 subpáginas já chamam a API real** (atrás do interruptor `API_ENABLED` — ver seção 9). Cada uma tem seu próprio `useState`/`useEffect` de carregamento e sua própria função de ação (`revisar`, `cadastrarUnidade`, `salvarFormulario`, `buscarAlvo`/`concederCreditos`, `criarCampanha`/`alternarCampanha`, `enviarVoucher`, `criarChave`/`revogarChave`), todas antes do `if(!arg)return...`.
+- **Para adicionar uma 7ª subpágina:** acrescentar a entrada em `G`, um novo `else if(arg==="chave"){...}` nessa cadeia e, se for chamar API, seguir o mesmo padrão das outras (estado + `useEffect` com `apiGet` + fallback para dado fictício). Dado fictício novo entra na seção "Dados de exemplo" (linha 492).
+- O contrato completo de rotas está documentado em `HANDOFF-DEV.md` (seção 7) e no PDF/DOCX `edpoints_rastro_e_voz.*` na raiz do projeto.
 
 ---
 
@@ -118,12 +119,49 @@ Fica toda na `function Config({arg})`, linha 1381.
 
 ## 9. Onde entram APIs de verdade
 
-Este arquivo **não faz nenhuma chamada de rede** para dados de negócio (só a fonte do Google Fonts). Para transformar isso num produto real:
+A tela de **Configurações** (as 6 subpáginas: catálogo, formulários, créditos, auditoria, integrações e arquivo) já está com as chamadas de API escritas, seguindo o contrato oficial (`edpoints_rastro_e_voz.pdf`/`.docx`, na raiz do projeto, fora de `painel-admin/`). O resto do protótipo (Hoje, Indicadores, Acessos, Usuários, Lotes, Atendimento, Saúde) ainda não tem chamada nenhuma — só os dados fictícios da seção "Dados de exemplo".
 
-1. Consultar a tabela "Endpoints sugeridos" em `HANDOFF-DEV.md` (seção 7) — já mapeia rota sugerida × retorno esperado para cada tela, incluindo as 6 subpáginas de Configurações.
-2. Trocar os arrays fixos da seção "Dados de exemplo" (linha 492) por estado carregado via `fetch` em `useEffect`, dentro de cada componente de tela (ou centralizado em `App()`, dependendo de quanto se quer compartilhar).
-3. Trocar as ações que hoje só chamam `A.toast("mensagem")` (ex.: "Novo produto em "+c, linha 1391; "Chave de integração criada", linha 1393) por chamadas `POST`/`PATCH`/`DELETE` para o endpoint correspondente, seguidas de atualização do estado local ou um refetch.
-4. Manter a UI como referência de comportamento — o handoff é explícito que o protótipo é "referência visual e de comportamento", não código para produção (linha 18 do `HANDOFF-DEV.md`).
+### Como ligar a API que já está escrita (Configurações)
+
+Toda chamada passa por um helper único, na seção `/* ================= API administrativa ================= */`, logo no início do `<script id="app-src">` (por volta da linha 496):
+
+```js
+const API_ENABLED=false;   // linha 500 — trocar para true quando a API estiver disponível
+const API_BASE="";         // linha 501 — apontar para a URL da API, ex.: "https://app.rastroevoz.com.br"
+```
+
+Passo a passo para ativar:
+
+1. Abrir `prototipo/painel-rastro-e-voz.html` e localizar `const API_ENABLED=false;` (Ctrl+F).
+2. Trocar para `const API_ENABLED=true;`.
+3. Preencher `API_BASE` com a raiz da API (sem `/api` no final — cada chamada já monta o caminho completo, ex. `/api/admin_catalog_suggestions.php?...`). Se a API estiver no mesmo domínio que o painel, pode deixar `API_BASE=""`.
+4. Se a API exigir autenticação por cookie de sessão, nada mais precisa mudar: `apiCall` (linha 502) já manda `credentials:"include"` em toda chamada. Se for por `Authorization: Bearer <token>`, é preciso guardar o token (ex. depois do login) e incluir o header dentro de `apiCall`, no objeto passado a `fetch`.
+5. Testar cada subpágina de Configurações (`#config?a=catalogo`, `#config?a=formularios`, `#config?a=creditos`, `#config?a=auditoria`, `#config?a=integracoes`, `#config?a=arquivo`) e confirmar que o aviso "API ainda não conectada" some — isso indica que a chamada real teve `success:true` na resposta.
+
+Enquanto `API_ENABLED` for `false` (ou uma chamada falhar/der erro), cada subpágina cai sozinha para os dados de exemplo e mostra esse aviso — o protótipo continua navegável mesmo sem API. Essa lógica de fallback fica dentro de `apiCall` (linhas 502–509) e é usada por `apiGet`/`apiPost` (linhas 510–511), chamados de dentro de `function Config({arg})` (linha 1420).
+
+### Rotas já plugadas por subpágina
+
+| Subpágina | Rotas usadas |
+|---|---|
+| Catálogo (`a=catalogo`) | `GET/POST admin_catalog_suggestions.php` (sugestões), `GET/POST measurement_units.php` (unidades) |
+| Formulários (`a=formularios`) | `GET admin_chain_subtypes.php?action=list`, `POST ...?action=update_form_config` |
+| Créditos (`a=creditos`) | `GET/POST qr_credit_promotions.php` (campanhas, busca de usuário, concessão de créditos), `POST mvp_admin.php?action=email_voucher` |
+| Auditoria (`a=auditoria`) | `GET mvp_admin.php?action=audit_log` |
+| Integrações (`a=integracoes`) | `GET/POST admin_partner_keys.php` (listar, criar, revogar chave) |
+| Arquivo (`a=arquivo`) | `GET mvp_admin.php?action=overview` |
+
+O botão "Criar link de passagem" (em Integrações) continua só local (`A.toast`) porque o contrato da API não tem rota para isso ainda — quando existir, seguir o mesmo padrão de `apiPost`.
+
+### Para ligar as demais telas (Hoje, Indicadores, Acessos, Usuários, Lotes, Atendimento, Saúde)
+
+Essas telas ainda não têm nenhuma chamada de API escrita. Para começar:
+
+1. Consultar a tabela "Endpoints sugeridos" em `HANDOFF-DEV.md` (seção 7) — mapeia rota sugerida × retorno esperado para cada uma.
+2. Reaproveitar o mesmo helper (`apiGet`/`apiPost`, linhas 510–511) em vez de criar um novo mecanismo de `fetch`.
+3. Trocar os arrays fixos da seção "Dados de exemplo" (linha 492) por estado carregado via `apiGet` em `useEffect`, seguindo o padrão usado em `Config` (linha 1420): estado próprio + estado "offline" + fallback pro dado fictício quando `res.ok` for `false`.
+4. Trocar as ações que hoje só chamam `A.toast("mensagem")` por `apiPost` para o endpoint correspondente, seguido de atualização do estado local.
+5. Manter a UI como referência de comportamento — o handoff é explícito que o protótipo é "referência visual e de comportamento", não código para produção (linha 18 do `HANDOFF-DEV.md`).
 
 ---
 
@@ -174,7 +212,8 @@ Este arquivo **não faz nenhuma chamada de rede** para dados de negócio (só a 
 | Adicionar um ícone | Entrada no dicionário `IC` (linha 732) |
 | Mudar/adicionar dado fictício | Seção "Dados de exemplo" (a partir da linha 492) |
 | Mudar uma regra de cálculo de KPI | `function metrics(...)` (linha 667) |
-| Ligar uma ação em API real | Ver seção 9 deste manual + tabela de endpoints no `HANDOFF-DEV.md` |
+| Ligar a API das 6 subpáginas de Configurações | Trocar `API_ENABLED` para `true` e preencher `API_BASE` (linhas 500–501) — ver seção 9 |
+| Ligar uma ação em API real numa tela que ainda não tem | Ver seção 9 (parte "Para ligar as demais telas") + tabela de endpoints no `HANDOFF-DEV.md` |
 | Documentar uma rota de API nova | `HANDOFF-DEV.md`, seção "7. Endpoints sugeridos" |
 
 ---
