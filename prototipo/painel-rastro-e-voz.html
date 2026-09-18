@@ -17,8 +17,10 @@ button{cursor:pointer}
 :focus-visible{outline:2px solid var(--green);outline-offset:2px;border-radius:6px}
 .app{display:flex;min-height:100vh}
 .side{width:244px;flex-shrink:0;background:var(--side);color:#E3ECE1;display:flex;flex-direction:column;padding:18px 12px;position:sticky;top:0;height:100vh;overflow:auto}
-.brand{display:flex;gap:10px;align-items:center;padding:4px 10px 16px}
-.brand b{font-size:15px;display:block}.brand small{font-size:12px;color:#A9C3AC}
+.brand{display:flex;align-items:center;padding:4px 6px 18px}
+.brand picture{display:block;width:100%}
+.brand-logo{display:block;width:100%;height:auto;max-height:110px;object-fit:contain;object-position:left center}
+.brand-top{display:none;height:64px;width:auto;max-width:240px;object-fit:contain;flex-shrink:0}
 .navgrp{font-size:12px;color:#93B097;padding:14px 10px 6px;font-weight:600}
 .nav{display:flex;align-items:center;gap:10px;width:100%;border:0;background:transparent;color:#DCE8DA;padding:9px 10px;border-radius:9px;font-weight:600;text-align:left}
 .nav:hover{background:rgba(255,255,255,.08)}
@@ -152,8 +154,8 @@ details>summary{cursor:pointer;font-weight:600}
 .empty{padding:34px 20px;text-align:center}
 .srhide{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 @media (max-width:1180px){.g5{grid-template-columns:repeat(3,minmax(0,1fr))}.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.g-main{grid-template-columns:1fr}.hide-m{display:none}}
-@media (max-width:980px){.side{width:72px;padding:14px 8px}.side .lbl,.side .navgrp,.brand div,.nav .bd{display:none}.nav{justify-content:center}.content{padding:18px 18px 90px}.top{padding:10px 18px}.g3{grid-template-columns:1fr}}
-@media (max-width:680px){.side{display:none}.bottom{display:flex;position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);z-index:40;justify-content:space-around;padding:6px 4px calc(6px + env(safe-area-inset-bottom))}.bottom button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;font-weight:600;color:var(--muted);padding:6px 8px;min-width:56px;position:relative}.bottom button.on{color:var(--green)}.g2,.g4,.g5{grid-template-columns:1fr}.hide-s{display:none}.content{padding:16px 14px 90px}h1{font-size:22px}.subnav{top:53px}.sheet{width:100%}}
+@media (max-width:980px){.side{width:88px;padding:14px 8px}.side .lbl,.side .navgrp,.nav .bd{display:none}.brand{padding:4px 0 14px;justify-content:center}.brand-logo{max-height:78px;max-width:76px;object-position:center}.nav{justify-content:center}.content{padding:18px 18px 90px}.top{padding:10px 18px}.g3{grid-template-columns:1fr}}
+@media (max-width:680px){.side{display:none}.top{padding:8px 12px 8px 2px;gap:6px}.brand-top{display:block;height:72px;max-width:260px;margin-left:-32px}.bottom{display:flex;position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);z-index:40;justify-content:space-around;padding:6px 4px calc(6px + env(safe-area-inset-bottom))}.bottom button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;font-weight:600;color:var(--muted);padding:6px 8px;min-width:56px;position:relative}.bottom button.on{color:var(--green)}.g2,.g4,.g5{grid-template-columns:1fr}.hide-s{display:none}.content{padding:16px 14px 90px}h1{font-size:22px}.subnav{top:53px}.sheet{width:100%}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 </style>
 </head>
@@ -1749,7 +1751,7 @@ function App(){
   else page=html`<${Hoje}/>`;
   return html`<${Ctx.Provider} value=${A}><div className="app">
     <aside className="side" aria-label="Navegação principal">
-      <div className="brand"><svg width="36" height="36" viewBox="0 0 36 36" aria-hidden="true"><rect width="36" height="36" rx="10" fill="#F3F6F1"/><path d="M11 9l17 9-17 9z" fill="#2C6B3F"/><path d="M15 23v-7m0 0c-2 0-3.5-1.5-3.5-3 2 0 3.5 1 3.5 3zm0 0c2 0 3.5-1.5 3.5-3-2 0-3.5 1-3.5 3z" stroke="#F3F6F1" strokeWidth="1.4" fill="none" strokeLinecap="round"/><path d="M22 15.5c.8.7.8 3.3 0 4" stroke="#C08322" strokeWidth="1.6" fill="none" strokeLinecap="round"/></svg><div><b>Rastro e Voz</b><small>Painel da equipe</small></div></div>
+      <div className="brand"><picture><source media="(max-width:980px)" srcSet="../public/logo_mobile.png"/><img className="brand-logo" src="../public/logo_desktop.png" alt="Rastro e Voz" width="220" height="65"/></picture></div>
       ${nav.map(([g,items])=>html`<div key=${g}><div className="navgrp">${g}</div>${items.map(([k,ic,l,b,t])=>html`<button type="button" key=${k} className=${"nav "+(curNav===k?"on":"")} aria-current=${curNav===k?"page":undefined} title=${l} onClick=${()=>go(k)}><${Icon} n=${ic} s=${18}/><span className="lbl">${l}</span>${b?html`<span className=${"bd "+(t||"")} aria-label=${b+" pendentes"}>${b}</span>`:null}</button>`)}</div>`)}
       <div className="me">
         ${me?html`<div className="pop" style=${{bottom:"110%",left:0,right:0}} role="menu"><button type="button" className="mi" role="menuitem" onClick=${()=>{setMe(false);toast("Formulário de troca de senha aberto")}}><${Icon} n="key" s=${15}/>Trocar senha</button><button type="button" className="mi" role="menuitem" onClick=${()=>{setMe(false);toast("Verificação em duas etapas está ativa")}}><${Icon} n="shield" s=${15}/>Verificação em duas etapas</button><button type="button" className="mi" role="menuitem" onClick=${()=>{setMe(false);cycleTheme()}}><${Icon} n="moon" s=${15}/>${theme==="dark"?"Usar tema claro":"Usar tema escuro"}</button><button type="button" className="mi" role="menuitem" onClick=${()=>{setMe(false);setHelp(true)}}><${Icon} n="info" s=${15}/>Atalhos de teclado</button><button type="button" className="mi" role="menuitem" style=${{color:"var(--red)"}} onClick=${()=>{setMe(false);toast("Sessão encerrada")}}><${Icon} n="logout" s=${15}/>Sair</button></div>`:null}
@@ -1758,6 +1760,7 @@ function App(){
     </aside>
     <div className="main">
       <header className="top">
+        <img className="brand-top" src="../public/logo_mobile.png" alt="Rastro e Voz" width="140" height="36"/>
         <button type="button" className="search" onClick=${()=>setPal(true)} aria-label="Abrir busca e comandos"><${Icon} n="search" s=${16}/><span style=${{flex:1}}>Buscar pessoa, lote, Código Rastro ou convite</span><span className="kbd hide-s">Ctrl K</span></button>
         <button type="button" className=${"pill hide-s "+(presas?"t-r":"t-g")} style=${{border:0,marginLeft:"auto",padding:"5px 11px"}} onClick=${()=>go("saude")}><${Icon} n=${presas?"wifioff":"pulse"} s=${13}/>${presas?presas+" filas offline presas":"Sistema estável"}</button>
         <div style=${{position:"relative"}}>
