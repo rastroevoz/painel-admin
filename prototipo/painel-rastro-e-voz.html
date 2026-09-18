@@ -1329,7 +1329,8 @@ function Atendimento({arg}){
           <div className="row sm muted" style=${{gap:8}}><span>${x.canal}</span><span>${x.resp||"Sem responsável"}</span></div>
         </button>`):html`<${Empty} title="Nada por aqui" text="Nenhum chamado neste filtro."/>`}
       </div>
-      ${t?html`<${React.Fragment}><div className="card" style=${{display:"flex",flexDirection:"column",minHeight:520}}>
+      ${t?html`<${React.Fragment}>
+      <div className="card" style=${{display:"flex",flexDirection:"column",minHeight:520}}>
         <div className="row between wrap" style=${{padding:"12px 16px",borderBottom:"1px solid var(--line)",gap:8}}>
           <div><h2>${t.assunto}</h2><div className="sm muted">${u.nome}, por ${t.canal}, aberto ${ago(t.t)}</div></div>
           <div className="row wrap"><select className="inp" aria-label="Situação" value=${t.st} onChange=${e=>{upd({st:e.target.value});A.toast("Chamado marcado como "+e.target.value.toLowerCase())}}>${["Sem resposta","Em andamento","Aguardando usuário","Resolvido"].map(s=>html`<option key=${s}>${s}</option>`)}</select><select className="inp" aria-label="Responsável" value=${t.resp||""} onChange=${e=>upd({resp:e.target.value})}><option value="">Sem responsável</option>${TEAM.map(p=>html`<option key=${p}>${p}</option>`)}</select></div>
@@ -1352,8 +1353,8 @@ function Atendimento({arg}){
           <textarea id="resp" className="inp" rows="3" style=${{background:mode==="nota"?"var(--note)":"var(--card)"}} placeholder=${mode==="resp"?"Escreva a resposta para "+first(u.nome):"Visível só para a equipe"} value=${txt} onInput=${e=>{setTxt(e.target.value)}}></textarea>
           <div className="row between wrap" style=${{marginTop:8}}>${mode==="resp"?html`<label className="row sm"><span className="muted">Enviar por</span><select className="inp" value=${canal} onChange=${e=>setCanal(e.target.value)}><option>WhatsApp</option><option>Aplicativo</option><option>E-mail</option></select></label>`:html`<span></span>`}<${Btn} k="pri" icon=${mode==="resp"?"send":"file"} disabled=${!txt.trim()} onClick=${enviar}>${mode==="resp"?"Enviar resposta":"Salvar nota"}<//></div>
         </div>
-      </div>`:null}
-      ${t?html`<div className="card pad">
+      </div>
+      <div className="card pad">
         <div className="row between"><h3>${u.nome}</h3></div><div style=${{margin:"6px 0"}}><${PerfilPill} p=${u.perfil}/></div>
         <p className="sm muted" style=${{margin:"0 0 10px"}}>${u.cidade}. ${u.last?"Usou o app "+ago(u.last)+".":"Nunca usou o app."}</p>
         ${dev?html`<div className="card" style=${{padding:10,background:"var(--red-s)",borderColor:"transparent",marginBottom:10}}><b className="sm">Fila offline presa</b><div className="sm">${dev.pend} registros ${ago(dev.desde)}. ${dev.erro}.</div></div>`:null}
@@ -1365,7 +1366,8 @@ function Atendimento({arg}){
         ${T.filter(x=>x.user===u.id&&x.id!==t.id).map(x=>html`<div key=${x.id} className="sm">${x.assunto} (${x.st.toLowerCase()})</div>`)}
         ${T.some(x=>x.user===u.id&&x.id!==t.id)?null:html`<p className="sm muted">Primeiro chamado desta pessoa.</p>`}
         <${Btn} sz="sm" style=${{marginTop:12,width:"100%",justifyContent:"center"}} onClick=${()=>A.openUser(u.id)}>Abrir perfil completo<//>
-      </div><//>`:null}
+      </div>
+      <//>`:null}
     </div>`:html`<div className="grid g2">
       <div className="card pad"><h3>Avaliações recebidas</h3>${notas.map(x=>html`<div key=${x.id} className="row between" style=${{padding:"8px 0",borderBottom:"1px solid var(--line2)"}}><span className="sm">${U[x.user].nome}: ${x.assunto}</span><b>${x.nota} de 5</b></div>`)}</div>
       <div className="card"><${Empty} title="Nenhum comentário livre ainda" text="Ative a pergunta de satisfação depois do primeiro QR Code emitido para ouvir os produtores no momento em que veem valor." action=${html`<${Btn} k="pri" onClick=${()=>A.toast("Pergunta de satisfação ativada")}>Ativar pergunta<//>`}/></div>
